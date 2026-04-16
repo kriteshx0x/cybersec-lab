@@ -78,12 +78,15 @@ def print_summary(results, threshold):
         return
 
     sorted_ips = sorted(results.items(), key=lambda x: x[1]["count"], reverse=True)
+    print(f"\nThreshold set to: {threshold}\n")
 
     for ip, data in sorted_ips:
-        flag = "⚠ SUSPICIOUS" if data["count"] >= threshold else ""
+        is_suspicious = data["count"] >= threshold
+        flag = "⚠ SUSPICIOUS" if is_suspicious else ""
         usernames = ", ".join(data["usernames"])
 
-        print(f"\nIP {ip} — {data['count']} attempts {flag}")
+        status = "SUSPICIOUS" if is_suspicious else "NORMAL"
+        print(f"\n[{status}] IP {ip} — {data['count']} attempts {flag}")   
         print(f"Users tried : {usernames}")
         print(f"First seen  : {data['timestamps'][0]}")
         print(f"Last seen   : {data['timestamps'][-1]}")
