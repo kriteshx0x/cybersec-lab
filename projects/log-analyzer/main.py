@@ -1,6 +1,8 @@
 import os
 import re
 import argparse
+from colorama import Fore, Style, init
+init(autoreset=True)
 from collections import defaultdict
 
 # ---------------- ARGPARSE ----------------
@@ -81,16 +83,34 @@ def print_summary(results, threshold):
     print(f"\nThreshold set to: {threshold}\n")
 
     for ip, data in sorted_ips:
-        is_suspicious = data["count"] >= threshold
-        flag = "⚠ SUSPICIOUS" if is_suspicious else ""
-        usernames = ", ".join(data["usernames"])
+        count = data["count"]
+        severity = get_severity(count)
+        color = get_color(severity)
 
-        status = "SUSPICIOUS" if is_suspicious else "NORMAL"
-        print(f"\n[{status}] IP {ip} — {data['count']} attempts {flag}")   
+        is_suspicious = count >= threshold
+        flag = "⚠ SUSPICIOUS" if is_suspicious else ""
+
+        print(color + f"\n[{severity}] IP {ip} — {count} attempts {flag}" + Style.RESET_ALL)
+        usernames = ", ".join(data["usernames"])
         print(f"Users tried : {usernames}")
         print(f"First seen  : {data['timestamps'][0]}")
         print(f"Last seen   : {data['timestamps'][-1]}")
 
+def get_severity(count):
+    if count >= 10:
+        return "HIGH"
+    elif count >= 4:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+def get_color(severity):
+    if severity == "HIGH":
+        return Fore.RED
+    elif severity == "MEDIUM":
+        return Fore.YELLOW
+    else:
+        return Fore.GREEN
 
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
