@@ -1,14 +1,16 @@
 import os
 import re
 import argparse
-from colorama import Fore, Style, init
-init(autoreset=True)
 from collections import defaultdict
+from colorama import Fore, Style, init
+
+init(autoreset=True)
 
 # ---------------- ARGPARSE ----------------
 parser = argparse.ArgumentParser(description="Log Analyzer - Failed Login Detection")
 parser.add_argument("logfile", help="Path to auth.log file")
 parser.add_argument("--threshold", type=int, default=5, help="Threshold for suspicious IPs")
+parser.add_argument("--output", help="File to save suspicious IPs")
 args = parser.parse_args()
 
 # ---------------- REGEX ----------------
@@ -45,7 +47,7 @@ def count_failed_attempts(lines):
     return ip_counts
 
 
-# ---------------- TOP 3 IPs (CHALLENGE) ----------------
+# ---------------- TOP 3 IPs ----------------
 def print_top_ips(ip_counts):
     print("\nTop 3 Attacking IPs:")
 
@@ -55,7 +57,7 @@ def print_top_ips(ip_counts):
         print(f"{ip} -> {count} attempts")
 
 
-# ---------------- EXISTING ADVANCED AGGREGATION ----------------
+# ---------------- AGGREGATION ----------------
 def aggregate_failed_logins(lines):
     results = defaultdict(lambda: {"count": 0, "usernames": set(), "timestamps": []})
 
@@ -70,6 +72,26 @@ def aggregate_failed_logins(lines):
     return dict(results)
 
 
+# ---------------- SEVERITY ----------------
+def get_severity(count):
+    if count >= 10:
+        return "HIGH"
+    elif count >= 4:
+        return "MEDIUM"
+    else:
+        return "LOW"
+
+
+def get_color(severity):
+    if severity == "HIGH":
+        return Fore.RED
+    elif severity == "MEDIUM":
+        return Fore.YELLOW
+    else:
+        return Fore.GREEN
+
+
+# ---------------- SUMMARY ----------------
 def print_summary(results, threshold):
     print("\n" + "=" * 50)
     print("  FAILED LOGIN SUMMARY")
@@ -84,11 +106,12 @@ def print_summary(results, threshold):
     sorted_ips = sorted(
         results.items(),
         key=lambda x: (
-            severity_rank[get_severity(x[1]["count"])],  # priority by severity
-            x[1]["count"]  # then by count
+            severity_rank[get_severity(x[1]["count"])],
+            x[1]["count"]
         ),
         reverse=True
     )
+
     print(f"\nThreshold set to: {threshold}\n")
 
     for ip, data in sorted_ips:
@@ -100,26 +123,25 @@ def print_summary(results, threshold):
         flag = "⚠ SUSPICIOUS" if is_suspicious else ""
 
         print(color + f"\n[{severity}] IP {ip} — {count} attempts {flag}" + Style.RESET_ALL)
+
         usernames = ", ".join(data["usernames"])
         print(f"Users tried : {usernames}")
         print(f"First seen  : {data['timestamps'][0]}")
         print(f"Last seen   : {data['timestamps'][-1]}")
 
-def get_severity(count):
-    if count >= 10:
-        return "HIGH"
-    elif count >= 4:
-        return "MEDIUM"
-    else:
-        return "LOW"
 
-def get_color(severity):
-    if severity == "HIGH":
-        return Fore.RED
-    elif severity == "MEDIUM":
-        return Fore.YELLOW
-    else:
-        return Fore.GREEN
+# ---------------- EXPORT ----------------
+def export_suspicious(results, threshold, output_file):
+    if not output_file:
+        return
+
+    with open(output_file, "w") as f:
+        for ip, data in results.items():
+            if data["count"] >= threshold:
+                f.write(f"{ip},{data['count']}\n")
+
+    print(f"\nSaved suspicious IPs to {output_file}")
+
 
 # ---------------- MAIN ----------------
 if __name__ == "__main__":
@@ -127,11 +149,11 @@ if __name__ == "__main__":
 
     print(f"Loaded {len(lines)} log lines")
 
-    # STEP 2 execution
     ip_counts = count_failed_attempts(lines)
     print_top_ips(ip_counts)
 
-    # existing summary
     results = aggregate_failed_logins(lines)
     print_summary(results, args.threshold)
+
+    export_suspicious(results, args.threshold, args.output)
 
