@@ -79,7 +79,16 @@ def print_summary(results, threshold):
         print("No failed login attempts detected.")
         return
 
-    sorted_ips = sorted(results.items(), key=lambda x: x[1]["count"], reverse=True)
+    severity_rank = {"HIGH": 3, "MEDIUM": 2, "LOW": 1}
+
+    sorted_ips = sorted(
+        results.items(),
+        key=lambda x: (
+            severity_rank[get_severity(x[1]["count"])],  # priority by severity
+            x[1]["count"]  # then by count
+        ),
+        reverse=True
+    )
     print(f"\nThreshold set to: {threshold}\n")
 
     for ip, data in sorted_ips:
