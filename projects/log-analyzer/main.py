@@ -1,6 +1,13 @@
 import sys
 import os
 import re
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("logfile")
+parser.add_argument("--threshold", type=int, default=5)
+
+args = parser.parse_args()
 
 FAILED_LOGIN_PATTERN = re.compile(
     r"(?P<timestamp>\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})"
