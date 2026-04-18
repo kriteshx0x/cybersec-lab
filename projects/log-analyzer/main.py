@@ -1,6 +1,9 @@
 import os
 import re
 import argparse
+import csv
+import json
+from datetime import datetime
 from collections import defaultdict
 from colorama import Fore, Style, init
 
@@ -8,9 +11,27 @@ init(autoreset=True)
 
 # ---------------- ARGPARSE ----------------
 parser = argparse.ArgumentParser(description="Log Analyzer - Failed Login Detection")
+
 parser.add_argument("logfile", help="Path to auth.log file")
-parser.add_argument("--threshold", type=int, default=5, help="Threshold for suspicious IPs")
-parser.add_argument("--output", help="File to save suspicious IPs")
+
+parser.add_argument(
+    "--threshold",
+    type=int,
+    default=5,
+    help="Threshold for suspicious IPs"
+)
+
+parser.add_argument(
+    "--output",
+    choices=["csv", "json"],
+    help="Export format (csv or json)"
+)
+
+parser.add_argument(
+    "--output-file",
+    help="Custom output filename"
+)
+
 args = parser.parse_args()
 
 # ---------------- REGEX ----------------
@@ -34,7 +55,7 @@ def read_log_file(filepath: str):
         return [line.strip() for line in f if line.strip()]
 
 
-# ---------------- STEP 2: COUNT FAILED ATTEMPTS ----------------
+# ---------------- COUNT FAILED ATTEMPTS ----------------
 def count_failed_attempts(lines):
     ip_counts = defaultdict(int)
 
@@ -68,6 +89,10 @@ def aggregate_failed_logins(lines):
             results[ip]["count"] += 1
             results[ip]["usernames"].add(parsed["username"])
             results[ip]["timestamps"].append(parsed["timestamp"])
+
+    # ensure timestamps are ordered
+    for ip in results:
+        results[ip]["timestamps"].sort()
 
     return dict(results)
 
@@ -130,17 +155,57 @@ def print_summary(results, threshold):
         print(f"Last seen   : {data['timestamps'][-1]}")
 
 
+# ---------------- PREPARE EXPORT DATA ----------------
+def prepare_export_data(results, threshold):
+    export_data = []
+
+    for ip, data in results.items():
+        count = data["count"]
+
+        if count < threshold:
+            continue
+
+        export_data.append({
+            "ip": ip,
+            "count": count,
+            "severity": get_severity(count),
+            "first_seen": data["timestamps"][0],
+            "last_seen": data["timestamps"][-1]
+        })
+
+    return export_data
+
+
 # ---------------- EXPORT ----------------
-def export_suspicious(results, threshold, output_file):
-    if not output_file:
+def export_results(data, fmt, filename):
+    if not data:
+        print("No data to export.")
         return
 
-    with open(output_file, "w") as f:
-        for ip, data in results.items():
-            if data["count"] >= threshold:
-                f.write(f"{ip},{data['count']}\n")
+    os.makedirs("output", exist_ok=True)
 
-    print(f"\nSaved suspicious IPs to {output_file}")
+    if not filename:
+        filename = f"output/results.{fmt}"
+
+    if fmt == "csv":
+        with open(filename, "w", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["ip", "count", "severity", "first_seen", "last_seen"]
+            )
+            writer.writeheader()
+            writer.writerows(data)
+
+    elif fmt == "json":
+        output = {
+            "generated_at": datetime.now().isoformat(),
+            "results": data
+        }
+
+        with open(filename, "w") as f:
+            json.dump(output, f, indent=4)
+
+    print(f"\n[+] Exported results → {filename}")
 
 
 # ---------------- MAIN ----------------
@@ -155,5 +220,13 @@ if __name__ == "__main__":
     results = aggregate_failed_logins(lines)
     print_summary(results, args.threshold)
 
-    export_suspicious(results, args.threshold, args.output)
+    # NEW EXPORT FLOW
+    if args.output:
+        export_data = prepare_export_data(results, args.threshold)
+
+        export_results(
+            export_data,
+            args.output,
+            args.output_file
+        )
 
