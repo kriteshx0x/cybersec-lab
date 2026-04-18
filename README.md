@@ -1,26 +1,22 @@
-# cybersec-lab
+# CyberSec Lab
 
-A structured repository tracking my cybersecurity learning journey — tools, projects, CTF writeups, and scripts.
+A collection of hands-on cybersecurity labs and tools built while learning and practicing.
 
-## Goals
-- Develop hands-on skills in web security, network analysis, and log forensics
-- Build two portfolio-ready projects before internship applications
-- Document everything clearly for team use
+## Labs
 
-## Tools Covered
-| Tool      | Purpose                     |
-|-----------|-----------------------------|
-| Nmap      | Network scanning            |
-| Wireshark | Packet analysis             |
-| Burp Suite| Web app security testing    |
-| Splunk    | Log aggregation & analysis  |
+### Log Analyzer
+Path: `labs/log-analyzer/`
 
-## Structure
-- `/tools/` — notes and configs per tool
-- `/projects/` — full mini-projects
-- `/writeups/` — CTF and TryHackMe solutions
-- `/notes/` — concept notes
-- `/scripts/` — utility scripts
-- `/samples/` — sample log files for testing
+Analyzes authentication logs to detect suspicious activity.
 
+Features:
+- Detects repeated failed login attempts
+- Identifies suspicious IPs
+- Assigns threat scores
+- Exports results (CSV/JSON)
+
+## Planned Labs
+- Port Scanner
+- Brute Force Detector
+- Network Traffic Analyzer
 

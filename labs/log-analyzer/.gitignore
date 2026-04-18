@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 projects/log-analyzer/outputs/
 .env
+outputs/
+__pycache__/
+*.pyc
