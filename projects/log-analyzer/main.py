@@ -62,8 +62,7 @@ def count_failed_attempts(lines):
     for line in lines:
         parsed = parse_line(line)
         if parsed:
-            ip = parsed["ip"]
-            ip_counts[ip] += 1
+            ip_counts[parsed["ip"]] += 1
 
     return ip_counts
 
@@ -71,7 +70,6 @@ def count_failed_attempts(lines):
 # ---------------- TOP 3 IPs ----------------
 def print_top_ips(ip_counts):
     print("\nTop 3 Attacking IPs:")
-
     top_ips = sorted(ip_counts.items(), key=lambda x: x[1], reverse=True)[:3]
 
     for ip, count in top_ips:
@@ -90,7 +88,7 @@ def aggregate_failed_logins(lines):
             results[ip]["usernames"].add(parsed["username"])
             results[ip]["timestamps"].append(parsed["timestamp"])
 
-    # ensure timestamps are ordered
+    # sort timestamps
     for ip in results:
         results[ip]["timestamps"].sort()
 
@@ -144,8 +142,7 @@ def print_summary(results, threshold):
         severity = get_severity(count)
         color = get_color(severity)
 
-        is_suspicious = count >= threshold
-        flag = "⚠ SUSPICIOUS" if is_suspicious else ""
+        flag = "⚠ SUSPICIOUS" if count >= threshold else ""
 
         print(color + f"\n[{severity}] IP {ip} — {count} attempts {flag}" + Style.RESET_ALL)
 
@@ -184,7 +181,10 @@ def export_results(data, fmt, filename):
 
     os.makedirs("output", exist_ok=True)
 
-    if not filename:
+    # filename handling
+    if filename:
+        filename = f"output/{filename}.{fmt}"
+    else:
         filename = f"output/results.{fmt}"
 
     if fmt == "csv":
@@ -198,8 +198,9 @@ def export_results(data, fmt, filename):
 
     elif fmt == "json":
         output = {
-            "generated_at": datetime.now().isoformat(),
-            "results": data
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "total_flagged": len(data),
+            "flagged_ips": data
         }
 
         with open(filename, "w") as f:
@@ -220,13 +221,7 @@ if __name__ == "__main__":
     results = aggregate_failed_logins(lines)
     print_summary(results, args.threshold)
 
-    # NEW EXPORT FLOW
     if args.output:
         export_data = prepare_export_data(results, args.threshold)
-
-        export_results(
-            export_data,
-            args.output,
-            args.output_file
-        )
+        export_results(export_data, args.output, args.output_file)
 
